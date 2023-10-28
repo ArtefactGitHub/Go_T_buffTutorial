@@ -4,24 +4,31 @@ managed:
   go_package_prefix:
     default: Go_T_buffTutorial/gen
 plugins:
-  - plugin: buf.build/grpc-ecosystem/gateway:v2.18.0
+  - plugin: buf.build/grpc-ecosystem/gateway
     out: gen
     opt:
+      - generate_unbound_methods=true
+      - logtostderr=true
       - paths=source_relative
+      - allow_delete_body=true
+
   - plugin: buf.build/grpc/go:v1.3.0
     out: gen
     opt:
       - paths=source_relative
       - require_unimplemented_servers=false
+
   # dependencies
   - plugin: buf.build/protocolbuffers/go
     out: gen
     opt:
       - paths=source_relative
+
   - plugin: buf.build/connectrpc/go
     out: gen
     opt: paths=source_relative
-  - plugin: buf.build/grpc-ecosystem/openapiv2:v2.18.0
+
+  - plugin: buf.build/grpc-ecosystem/openapiv2
     out: docs/openapiv2
     opt:
       - logtostderr=true
