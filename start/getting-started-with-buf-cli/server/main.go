@@ -1,46 +1,74 @@
 package main
 
 import (
+	petv1 "Go_T_buffTutorial/gen/pet/v1"
+	"Go_T_buffTutorial/internal/handler"
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
-	petv1 "Go_T_buffTutorial/gen/pet/v1"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"google.golang.org/protobuf/encoding/protojson"
 
-	"Go_T_buffTutorial/gen/pet/v1/petv1connect"
-
-	connect "connectrpc.com/connect"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const address = "localhost:8080"
 
-func main() {
-	mux := http.NewServeMux()
-	path, handler := petv1connect.NewPetStoreServiceHandler(&petStoreServiceServer{})
-	mux.Handle(path, handler)
-	fmt.Println("... Listening on", address)
-	http.ListenAndServe(
-		address,
-		// Use h2c so we can serve HTTP/2 without TLS.
-		h2c.NewHandler(mux, &http2.Server{}),
+type Server struct {
+	gRPCServer             *grpc.Server
+	gRPCConn               *grpc.ClientConn
+	PetStoreServiceHandler petv1.PetStoreServiceServer
+}
+
+func NewServer() *Server {
+	s := Server{}
+	s.gRPCServer = grpc.NewServer()
+	s.PetStoreServiceHandler = handler.NewPetStoreServiceHandler()
+	return &s
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	petv1.RegisterPetStoreServiceServer(s.gRPCServer, s.PetStoreServiceHandler)
+	return nil
+}
+
+func (s *Server) GetHttpHandler(ctx context.Context, gRPCPort int) http.Handler {
+	endpoint := fmt.Sprintf("127.0.0.1:%d", gRPCPort)
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	conn, err := grpc.Dial(endpoint, opts...)
+	if err != nil {
+		panic(err)
+	}
+	s.gRPCConn = conn
+
+	runtime.NewServeMux(
+		runtime.WithMarshalerOption(
+			runtime.MIMEWildcard,
+			&runtime.HTTPBodyMarshaler{
+				Marshaler: &runtime.JSONPb{
+					MarshalOptions: protojson.MarshalOptions{
+						EmitUnpopulated: true,
+						UseEnumNumbers:  true,
+					},
+					UnmarshalOptions: protojson.UnmarshalOptions{
+						DiscardUnknown: true,
+					},
+				},
+			},
+		),
 	)
+
+	_ = petv1.RegisterPetStoreServiceServer()
 }
 
-// petStoreServiceServer implements the PetStoreService API.
-type petStoreServiceServer struct {
-	petv1connect.UnimplementedPetStoreServiceHandler
-}
+func main() {
+	ctx := context.Background()
+	s := NewServer()
 
-// PutPet adds the pet associated with the given request into the PetStore.
-func (s *petStoreServiceServer) PutPet(
-	ctx context.Context,
-	req *connect.Request[petv1.PutPetRequest],
-) (*connect.Response[petv1.PutPetResponse], error) {
-	name := req.Msg.GetName()
-	petType := req.Msg.GetPetType()
-	log.Printf("Got a request to create a %v named %s", petType, name)
-	return connect.NewResponse(&petv1.PutPetResponse{}), nil
+	err := s.Start(ctx)
+	if err != nil {
+		fmt.Errorf("main err: %#v\n", err)
+	}
 }

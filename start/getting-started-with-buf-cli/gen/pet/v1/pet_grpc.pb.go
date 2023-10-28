@@ -69,16 +69,15 @@ func (c *petStoreServiceClient) DeletePet(ctx context.Context, in *DeletePetRequ
 }
 
 // PetStoreServiceServer is the server API for PetStoreService service.
-// All implementations must embed UnimplementedPetStoreServiceServer
+// All implementations should embed UnimplementedPetStoreServiceServer
 // for forward compatibility
 type PetStoreServiceServer interface {
 	GetPet(context.Context, *GetPetRequest) (*GetPetResponse, error)
 	PutPet(context.Context, *PutPetRequest) (*PutPetResponse, error)
 	DeletePet(context.Context, *DeletePetRequest) (*DeletePetResponse, error)
-	mustEmbedUnimplementedPetStoreServiceServer()
 }
 
-// UnimplementedPetStoreServiceServer must be embedded to have forward compatible implementations.
+// UnimplementedPetStoreServiceServer should be embedded to have forward compatible implementations.
 type UnimplementedPetStoreServiceServer struct {
 }
 
@@ -91,7 +90,6 @@ func (UnimplementedPetStoreServiceServer) PutPet(context.Context, *PutPetRequest
 func (UnimplementedPetStoreServiceServer) DeletePet(context.Context, *DeletePetRequest) (*DeletePetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeletePet not implemented")
 }
-func (UnimplementedPetStoreServiceServer) mustEmbedUnimplementedPetStoreServiceServer() {}
 
 // UnsafePetStoreServiceServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to PetStoreServiceServer will
