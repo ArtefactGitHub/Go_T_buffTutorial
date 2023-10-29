@@ -28,6 +28,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PetStoreServiceClient interface {
+	// rpc GetPet(GetPetRequest) returns (GetPetResponse) {}
 	GetPet(ctx context.Context, in *GetPetRequest, opts ...grpc.CallOption) (*GetPetResponse, error)
 	PutPet(ctx context.Context, in *PutPetRequest, opts ...grpc.CallOption) (*PutPetResponse, error)
 	DeletePet(ctx context.Context, in *DeletePetRequest, opts ...grpc.CallOption) (*DeletePetResponse, error)
@@ -72,6 +73,7 @@ func (c *petStoreServiceClient) DeletePet(ctx context.Context, in *DeletePetRequ
 // All implementations should embed UnimplementedPetStoreServiceServer
 // for forward compatibility
 type PetStoreServiceServer interface {
+	// rpc GetPet(GetPetRequest) returns (GetPetResponse) {}
 	GetPet(context.Context, *GetPetRequest) (*GetPetResponse, error)
 	PutPet(context.Context, *PutPetRequest) (*PutPetResponse, error)
 	DeletePet(context.Context, *DeletePetRequest) (*DeletePetResponse, error)

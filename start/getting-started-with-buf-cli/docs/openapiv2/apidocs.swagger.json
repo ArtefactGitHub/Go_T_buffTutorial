@@ -10,7 +10,36 @@
   "produces": [
     "application/json"
   ],
-  "paths": {},
+  "paths": {
+    "/api/v1/pets/{petId}": {
+      "get": {
+        "summary": "rpc GetPet(GetPetRequest) returns (GetPetResponse) {}",
+        "operationId": "PetStoreService_GetPet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetPetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "petId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ]
+      }
+    }
+  },
   "definitions": {
     "protobufAny": {
       "type": "object",

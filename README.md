@@ -15,3 +15,7 @@ to the BSR so that it can be consumed by others. The tour takes approximately 20
 - 「ブラウザーおよび gRPC 互換の HTTP API を構築するためのスリム ライブラリ」とは何ぞや
   - gRPC-GatewayはHTTPサーバーとgRPCサーバー両方を建てて、HTTPリクエストを仲介する感じ？
   - サンプルを見る限り、connectはHTTP2サーバーを建てる？　gRPCやconnectプロトコルのリクエストを受け、内部ではHTTPハンドラーで処理する感じ？
+- HTTPサーバーでREST APIを提供して内部のgRPCサーバーで処理する、とは異なるので、gRCP-Gatewayを使うことにした
+  - protoのimportでエラーになる
+    - [こちら](https://qiita.com/takat0-h0rikosh1/items/3e4c4daa0bf89f04d241)記事のようにやはりコンパイル時に参照できる必要があるらしい
+      - `go get -u github.com/googleapis/googleapis`

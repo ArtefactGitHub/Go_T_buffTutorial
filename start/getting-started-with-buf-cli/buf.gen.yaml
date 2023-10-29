@@ -24,9 +24,9 @@ plugins:
     opt:
       - paths=source_relative
 
-  - plugin: buf.build/connectrpc/go
-    out: gen
-    opt: paths=source_relative
+#  - plugin: buf.build/connectrpc/go
+#    out: gen
+#    opt: paths=source_relative
 
   - plugin: buf.build/grpc-ecosystem/openapiv2
     out: docs/openapiv2
