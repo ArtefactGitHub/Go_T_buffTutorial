@@ -3,6 +3,7 @@ package server
 import (
 	petv1 "Go_T_buffTutorial/gen/pet/v1"
 	"Go_T_buffTutorial/internal/handler"
+	"Go_T_buffTutorial/internal/pkg/gateway"
 	"context"
 	"errors"
 	"fmt"
@@ -12,17 +13,17 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/gorilla/handlers"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"google.golang.org/protobuf/encoding/protojson"
-
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-const address = "localhost:8080"
+const (
+	gRPCServerEndpoint = "localhost:30000"
+	httpServerEndpoint = "localhost:50000"
+)
 
 type Server struct {
+	gRPCGateway *gateway.GRPCGateway
+
 	httpHandler http.Handler
 	httpServer  *http.Server
 	httpErrCh   chan error
@@ -33,13 +34,37 @@ type Server struct {
 	PetStoreServiceHandler petv1.PetStoreServiceServer
 }
 
-// func NewServer() *Server {
-func NewServer(h http.Handler) *Server {
+type Option func(*Server) error
+
+func WithGRPCGateway(g *gateway.GRPCGateway) Option {
+	return func(s *Server) error {
+		s.gRPCGateway = g
+		return nil
+	}
+}
+
+func NewServer(
+	ctx context.Context,
+	funcs []gateway.RegisterServiceHandlerFunc,
+	opts ...Option,
+) *Server {
 	s := Server{}
+
+	for _, v := range opts {
+		err := v(&s)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	s.gRPCServer = grpc.NewServer()
 	s.PetStoreServiceHandler = handler.NewPetStoreServiceHandler()
 
-	s.httpHandler = h
+	s.httpHandler = s.gRPCGateway.CreateHttpHandler(
+		ctx,
+		gRPCServerEndpoint,
+		funcs...,
+	)
 	s.httpServer = &http.Server{Handler: s.httpHandler}
 	return &s
 }
@@ -47,11 +72,11 @@ func NewServer(h http.Handler) *Server {
 func (s *Server) Start(ctx context.Context) error {
 	petv1.RegisterPetStoreServiceServer(s.gRPCServer, s.PetStoreServiceHandler)
 
-	ts, err := net.Listen("tcp", fmt.Sprintf("localhost:30000"))
+	ts, err := net.Listen("tcp", gRPCServerEndpoint)
 	if err != nil {
 		return err
 	}
-	hts, err := net.Listen("tcp", fmt.Sprintf("localhost:50000"))
+	hts, err := net.Listen("tcp", httpServerEndpoint)
 	if err != nil {
 		// _ = ts.Close()
 		return err
@@ -85,39 +110,4 @@ func (s *Server) Start(ctx context.Context) error {
 		fmt.Printf("gRPC server stopped err %v\n", err)
 	}
 	return nil
-}
-
-// func (s *Server) GetHttpHandler(ctx context.Context, gRPCPort int) http.Handler {
-func GetHttpHandler(ctx context.Context, gRPCPort int) http.Handler {
-	endpoint := fmt.Sprintf("localhost:%d", gRPCPort)
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	conn, err := grpc.Dial(endpoint, opts...)
-	if err != nil {
-		panic(err)
-	}
-	//s.gRPCConn = conn
-
-	mux := runtime.NewServeMux(
-		runtime.WithMarshalerOption(
-			runtime.MIMEWildcard,
-			&runtime.HTTPBodyMarshaler{
-				Marshaler: &runtime.JSONPb{
-					MarshalOptions: protojson.MarshalOptions{
-						EmitUnpopulated: true,
-						UseEnumNumbers:  true,
-					},
-					UnmarshalOptions: protojson.UnmarshalOptions{
-						DiscardUnknown: true,
-					},
-				},
-			},
-		),
-	)
-
-	_ = petv1.RegisterPetStoreServiceHandler(ctx, mux, conn)
-	return handlers.CORS(
-		handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "DELETE"}),
-		handlers.AllowedOrigins([]string{"*"}),
-		handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "ResponseType"}),
-	)(mux)
 }
