@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	petv1 "Go_T_buffTutorial/gen/pet/v1"
@@ -120,17 +120,4 @@ func GetHttpHandler(ctx context.Context, gRPCPort int) http.Handler {
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedHeaders([]string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "Authorization", "ResponseType"}),
 	)(mux)
-}
-
-func main() {
-	ctx := context.Background()
-
-	//s := NewServer()
-	//s.httpHandler = GetHttpHandler(ctx, 30000)
-	s := NewServer(GetHttpHandler(ctx, 30000))
-
-	err := s.Start(ctx)
-	if err != nil {
-		fmt.Printf("main err: %#v\n", err)
-	}
 }
