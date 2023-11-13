@@ -21,7 +21,7 @@ func NewGRPCGateway() *GRPCGateway {
 }
 
 type RegisterServiceHandlerFunc func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
-type RegisterServiceServerFunc func(context.Context, *grpc.ServiceRegistrar)
+type RegisterServiceServerFunc func(context.Context, grpc.ServiceRegistrar)
 
 func (g *GRPCGateway) CreateHttpHandler(
 	ctx context.Context,

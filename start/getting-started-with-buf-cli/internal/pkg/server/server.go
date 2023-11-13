@@ -1,8 +1,6 @@
 package server
 
 import (
-	petv1 "Go_T_buffTutorial/gen/pet/v1"
-	"Go_T_buffTutorial/internal/handler"
 	"Go_T_buffTutorial/internal/pkg/gateway"
 	"context"
 	"errors"
@@ -21,7 +19,7 @@ const (
 	httpServerEndpoint = "localhost:50000"
 )
 
-type Server struct {
+type Manager struct {
 	gRPCGateway *gateway.GRPCGateway
 
 	httpHandler http.Handler
@@ -30,48 +28,47 @@ type Server struct {
 	gRPCServer  *grpc.Server
 	gRPCConn    *grpc.ClientConn
 	gRPCErrCh   chan error
-
-	PetStoreServiceHandler petv1.PetStoreServiceServer
 }
 
-type Option func(*Server) error
+type Option func(*Manager) error
 
 func WithGRPCGateway(g *gateway.GRPCGateway) Option {
-	return func(s *Server) error {
+	return func(s *Manager) error {
 		s.gRPCGateway = g
 		return nil
 	}
 }
 
-func NewServer(
+func NewManager(
 	ctx context.Context,
-	funcs []gateway.RegisterServiceHandlerFunc,
+	registerServiceHandlerFuncs []gateway.RegisterServiceHandlerFunc,
+	registerServiceServerFuncs []gateway.RegisterServiceServerFunc,
 	opts ...Option,
-) *Server {
-	s := Server{}
+) *Manager {
+	m := Manager{}
 
 	for _, v := range opts {
-		err := v(&s)
+		err := v(&m)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	s.gRPCServer = grpc.NewServer()
-	s.PetStoreServiceHandler = handler.NewPetStoreServiceHandler()
+	m.gRPCServer = grpc.NewServer()
+	for _, v := range registerServiceServerFuncs {
+		v(ctx, m.gRPCServer)
+	}
 
-	s.httpHandler = s.gRPCGateway.CreateHttpHandler(
+	m.httpHandler = m.gRPCGateway.CreateHttpHandler(
 		ctx,
 		gRPCServerEndpoint,
-		funcs...,
+		registerServiceHandlerFuncs...,
 	)
-	s.httpServer = &http.Server{Handler: s.httpHandler}
-	return &s
+	m.httpServer = &http.Server{Handler: m.httpHandler}
+	return &m
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	petv1.RegisterPetStoreServiceServer(s.gRPCServer, s.PetStoreServiceHandler)
-
+func (m *Manager) Start(_ context.Context) error {
 	ts, err := net.Listen("tcp", gRPCServerEndpoint)
 	if err != nil {
 		return err
@@ -83,19 +80,17 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	go func() {
-		fmt.Println(">> httpServer.Serve")
-		if err := s.httpServer.Serve(hts); !errors.Is(err, http.ErrServerClosed) {
+		fmt.Printf(">> httpServer.Serve: %s\n", gRPCServerEndpoint)
+		if err := m.httpServer.Serve(hts); !errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("HTTP Server error\n")
-			//panic("HTTP Server error")
-			s.httpErrCh <- err
+			m.httpErrCh <- err
 		}
 	}()
 	go func() {
-		fmt.Println(">> gRPCServer.Serve")
-		if err := s.gRPCServer.Serve(ts); !errors.Is(err, http.ErrServerClosed) {
+		fmt.Printf(">> gRPCServer.Serve: %s\n", httpServerEndpoint)
+		if err := m.gRPCServer.Serve(ts); !errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("gRPC Server error\n")
-			//panic("gRPC Server error")
-			s.gRPCErrCh <- err
+			m.gRPCErrCh <- err
 		}
 	}()
 
@@ -104,9 +99,9 @@ func (s *Server) Start(ctx context.Context) error {
 	select {
 	case sig := <-ch:
 		fmt.Printf("receive signal, sig: %s\n", sig.String())
-	case err = <-s.httpErrCh:
+	case err = <-m.httpErrCh:
 		fmt.Printf("HTTP server stopped err %v\n", err)
-	case err = <-s.gRPCErrCh:
+	case err = <-m.gRPCErrCh:
 		fmt.Printf("gRPC server stopped err %v\n", err)
 	}
 	return nil

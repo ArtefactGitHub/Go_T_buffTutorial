@@ -1,8 +1,8 @@
 package main
 
 import (
-	"Go_T_buffTutorial/cmd/server"
 	"Go_T_buffTutorial/internal/pkg/gateway"
+	"Go_T_buffTutorial/internal/pkg/server"
 	"context"
 	"fmt"
 )
@@ -10,9 +10,10 @@ import (
 func main() {
 	ctx := context.Background()
 
-	s := server.NewServer(
+	s := server.NewManager(
 		ctx,
-		server.RegisterServiceHandlerFuncs(),
+		RegisterServiceHandlerFuncs(),
+		RegisterServiceServerFuncs(),
 		server.WithGRPCGateway(gateway.NewGRPCGateway()),
 	)
 
